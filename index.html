@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Government Survey Data Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        .query-box {
+            min-height: 150px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .result-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-pending {
+            background-color: #FFC107;
+        }
+        .status-success {
+            background-color: #4CAF50;
+        }
+        .status-error {
+            background-color: #F44336;
+        }
+        .tab-btn {
+            border-bottom: 2px solid transparent;
+        }
+        .tab-btn.active {
+            border-color: #2563eb;
+            color: #2563eb;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Login Modal -->
+        <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-96">
+                <h2 class="text-2xl font-bold mb-4 text-center">Government Portal</h2>
+                <div id="loginTab" class="flex mb-6 border-b">
+                    <button class="tab-btn active py-2 px-4 font-medium" data-tab="login">Login</button>
+                    <button class="tab-btn py-2 px-4 font-medium" data-tab="signup">Sign Up</button>
+                </div>
+                <form id="loginForm" class="tab-content active">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2" for="username">Username</label>
+                        <input type="text" id="username" class="w-full px-3 py-2 border rounded-lg" required>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-700 mb-2" for="password">Password</label>
+                        <input type="password" id="password" class="w-full px-3 py-2 border rounded-lg" required>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">Login</button>
+                </form>
+                <form id="signupForm" class="tab-content hidden">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2" for="signupName">Full Name</label>
+                        <input type="text" id="signupName" class="w-full px-3 py-2 border rounded-lg" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2" for="signupUsername">Username</label>
+                        <input type="text" id="signupUsername" class="w-full px-3 py-2 border rounded-lg" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2" for="signupPassword">Password</label>
+                        <input type="password" id="signupPassword" class="w-full px-3 py-2 border rounded-lg" required>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-700 mb-2" for="signupConfirm">Confirm Password</label>
+                        <input type="password" id="signupConfirm" class="w-full px-3 py-2 border rounded-lg" required>
+                    </div>
+                    <button type="submit" class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">Sign Up</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main Content (hidden until login) -->
+        <div id="mainContent" class="hidden">
+            <!-- Header -->
+            <header class="bg-blue-800 text-white p-4 rounded-lg mb-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold">Government Survey Data Portal</h1>
+                        <p class="text-blue-200">Access official survey datasets and run queries</p>
+                    </div>
+                    <div class="flex items-center">
+                        <span id="userGreeting" class="mr-4"></span>
+                        <button id="logoutBtn" class="bg-blue-700 px-4 py-1 rounded hover:bg-blue-900">Logout</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dataset Information -->
+            <section class="mb-8 bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Available Survey Datasets</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="border p-4 rounded-lg">
+                        <h3 class="font-medium mb-2">Population Census 2023</h3>
+                        <p class="text-sm text-gray-600 mb-2">National population data with demographic breakdown</p>
+                        <div class="text-xs text-gray-500">
+                            <div><strong>Updated:</strong> January 15, 2024</div>
+                            <div><strong>Records:</strong> 1,428,576</div>
+                        </div>
+                    </div>
+                    <div class="border p-4 rounded-lg">
+                        <h3 class="font-medium mb-2">Economic Survey 2023</h3>
+                        <p class="text-sm text-gray-600 mb-2">GDP, employment and sectoral performance metrics</p>
+                        <div class="text-xs text-gray-500">
+                            <div><strong>Updated:</strong> November 30, 2023</div>
+                            <div><strong>Records:</strong> 324,872</div>
+                        </div>
+                    </div>
+                    <div class="border p-4 rounded-lg">
+                        <h3 class="font-medium mb-2">Health Survey 2023</h3>
+                        <p class="text-sm text-gray-600 mb-2">Public health indicators and facility statistics</p>
+                        <div class="text-xs text-gray-500">
+                            <div><strong>Updated:</strong> February 28, 2024</div>
+                            <div><strong>Records:</strong> 892,417</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Query Interface -->
+            <section class="mb-8 bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">SQL Query Interface</h2>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2" for="datasetSelect">Select Dataset:</label>
+                    <select id="datasetSelect" class="w-full p-2 border rounded-lg">
+                        <option value="population">Population Census 2023</option>
+                        <option value="economic">Economic Survey 2023</option>
+                        <option value="health">Health Survey 2023</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Enter Your Query:</label>
+                    <div class="query-box bg-gray-100 rounded-lg" id="queryEditor" contenteditable="true">SELECT * FROM population LIMIT 100;</div>
+                </div>
+                <div class="flex justify-between">
+                    <button id="validateBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">Validate Query</button>
+                    <button id="executeBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Execute Query</button>
+                    <button id="resetBtn" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">Reset</button>
+                </div>
+            </section>
+
+            <!-- Query Status -->
+            <section id="queryStatusSection" class="hidden mb-8 bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">
+                    <span id="statusIndicator" class="status-indicator status-pending"></span>
+                    <span id="statusTitle">Query Status</span>
+                </h2>
+                <div id="statusMessage" class="text-gray-700"></div>
+                <div id="mysqlPreview" class="mt-4 hidden">
+                    <h3 class="font-medium mb-2">Generated MySQL Query:</h3>
+                    <div class="query-box bg-gray-100 rounded-lg p-3 text-sm"></div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="resultsSection" class="hidden mb-8 bg-white p-6 rounded-lg shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Query Results</h2>
+                    <button id="exportPdfBtn" class="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 text-sm">Export to PDF</button>
+                </div>
+                <div id="resultCount" class="text-sm text-gray-600 mb-2"></div>
+                <div class="result-container border rounded-lg overflow-hidden">
+                    <table id="resultsTable" class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr id="tableHeaders"></tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200" id="tableBody"></tbody>
+                    </table>
+                </div>
+                <div id="jsonPreview" class="mt-6">
+                    <h3 class="font-medium mb-2">JSON Output:</h3>
+                    <div class="query-box bg-gray-100 rounded-lg p-3 text-sm"></div>
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <footer class="text-center text-gray-600 text-sm mt-12">
+                <p>© 2024 Government Survey Data Portal. All rights reserved.</p>
+                <p class="mt-1">Data updated monthly. For assistance, contact support@surveydata.gov</p>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        // Initialize jsPDF namespace
+        const { jsPDF } = window.jspdf;
+        
+        // Sample user data (in production, this would come from a proper authentication system)
+        const users = [
+            { username: "admin", password: "admin123", name: "Admin User" },
+            { username: "analyst", password: "analyst123", name: "Data Analyst" }
+        ];
+
+        // Dataset schemas
+        const datasets = {
+            population: {
+                fields: ["district", "population", "male_count", "female_count", "children_count", "elderly_count"],
+                sampleData: []
+            },
+            economic: {
+                fields: ["sector", "gdp_contribution", "employment", "wages", "establishments"],
+                sampleData: []
+            },
+            health: {
+                fields: ["facility_name", "beds", "doctors", "nurses", "patients_per_month"],
+                sampleData: []
+            }
+        };
+
+        // Generate sample data for demonstration
+        for (let i = 0; i < 50; i++) {
+            datasets.population.sampleData.push({
+                district: `District ${i+1}`,
+                population: Math.floor(Math.random() * 500000) + 100000,
+                male_count: Math.floor(Math.random() * 250000) + 50000,
+                female_count: Math.floor(Math.random() * 250000) + 50000,
+                children_count: Math.floor(Math.random() * 100000) + 20000,
+                elderly_count: Math.floor(Math.random() * 50000) + 10000
+            });
+
+            datasets.economic.sampleData.push({
+                sector: ["Agriculture", "Manufacturing", "Services", "Technology", "Construction"][Math.floor(Math.random() * 5)],
+                gdp_contribution: (Math.random() * 30 + 5).toFixed(2),
+                employment: Math.floor(Math.random() * 50000) + 5000,
+                wages: Math.floor(Math.random() * 5000) + 1500,
+                establishments: Math.floor(Math.random() * 500) + 50
+            });
+
+            datasets.health.sampleData.push({
+                facility_name: ["General Hospital", "Community Clinic", "Specialty Center", "Regional Facility"][Math.floor(Math.random() * 4)] + ` ${i+1}`,
+                beds: Math.floor(Math.random() * 200) + 20,
+                doctors: Math.floor(Math.random() * 50) + 5,
+                nurses: Math.floor(Math.random() * 100) + 10,
+                patients_per_month: Math.floor(Math.random() * 2000) + 200
+            });
+        }
+
+        // DOM Elements
+        const loginModal = document.getElementById('loginModal');
+        const loginForm = document.getElementById('loginForm');
+        const mainContent = document.getElementById('mainContent');
+        const userGreeting = document.getElementById('userGreeting');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const validateBtn = document.getElementById('validateBtn');
+        const executeBtn = document.getElementById('executeBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const queryEditor = document.getElementById('queryEditor');
+        const datasetSelect = document.getElementById('datasetSelect');
+        const queryStatusSection = document.getElementById('queryStatusSection');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusTitle = document.getElementById('statusTitle');
+        const statusMessage = document.getElementById('statusMessage');
+        const mysqlPreview = document.getElementById('mysqlPreview');
+        const resultsSection = document.getElementById('resultsSection');
+        const resultCount = document.getElementById('resultCount');
+        const tableHeaders = document.getElementById('tableHeaders');
+        const tableBody = document.getElementById('tableBody');
+        const jsonPreview = document.querySelector('#jsonPreview .query-box');
+        const mysqlPreviewBox = document.querySelector('#mysqlPreview .query-box');
+        const exportPdfBtn = document.getElementById('exportPdfBtn');
+
+        // App State
+        let currentUser = null;
+        let currentResults = null;
+        let generatedMySQL = '';
+        let queryStatus = 'idle'; // 'idle', 'validating', 'executing', 'success', 'error'
+
+        // Event Listeners
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                btn.classList.add('active');
+                const tabId = btn.dataset.tab;
+                document.getElementById(tabId + 'Form').classList.add('active');
+            });
+        });
+
+        loginForm.addEventListener('submit', handleLogin);
+        document.getElementById('signupForm').addEventListener('submit', handleSignup);
+        logoutBtn.addEventListener('click', handleLogout);
+        validateBtn.addEventListener('click', validateQuery);
+        executeBtn.addEventListener('click', executeQuery);
+        resetBtn.addEventListener('click', resetInterface);
+        exportPdfBtn.addEventListener('click', exportToPdf);
+
+        // Show login modal initially
+        loginModal.classList.remove('hidden');
+
+        // Functions
+        function handleSignup(e) {
+            e.preventDefault();
+            const name = document.getElementById('signupName').value;
+            const username = document.getElementById('signupUsername').value;
+            const password = document.getElementById('signupPassword').value;
+            const confirm = document.getElementById('signupConfirm').value;
+
+            if (password !== confirm) {
+                alert('Passwords do not match');
+                return;
+            }
+
+            if (users.some(u => u.username === username)) {
+                alert('Username already exists');
+                return;
+            }
+
+            const newUser = {
+                username,
+                password,
+                name
+            };
+
+            users.push(newUser);
+            alert('Account created successfully! Please login.');
+            document.querySelector('[data-tab="login"]').click();
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const user = users.find(u => u.username === username && u.password === password);
+            
+            if (user) {
+                currentUser = user;
+                loginModal.classList.add('hidden');
+                mainContent.classList.remove('hidden');
+                userGreeting.textContent = `Welcome, ${user.name}`;
+            } else {
+                alert('Invalid username or password');
+            }
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            mainContent.classList.add('hidden');
+            loginModal.classList.remove('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            resetInterface();
+        }
+
+        function validateQuery() {
+            const query = queryEditor.textContent.trim();
+            const selectedDataset = datasetSelect.value;
+            
+            if (!query) {
+                showStatus('error', 'Query cannot be empty');
+                return;
+            }
+
+            showStatus('validating', 'Validating your query...');
+            
+            // Simulate API validation delay
+            setTimeout(() => {
+                // Basic validation rules (in a real app, this would be done server-side)
+                if (!query.toLowerCase().includes('select') || query.toLowerCase().includes('delete') || query.toLowerCase().includes('update')) {
+                    showStatus('error', 'Query validation failed: Only SELECT queries are allowed for security reasons');
+                    return;
+                }
+
+                if (!query.toLowerCase().includes('from')) {
+                    showStatus('error', 'Query validation failed: Query must include FROM clause');
+                    return;
+                }
+
+                // Generate MySQL version (in a real app, this would be done by the API)
+                generatedMySQL = `SELECT ${query.split('from')[0].split('select')[1]} FROM ${datasets[selectedDataset].fields.join(', ')} ${query.split('from')[1]}`;
+                
+                mysqlPreviewBox.textContent = generatedMySQL;
+                mysqlPreview.classList.remove('hidden');
+                
+                showStatus('success', 'Query validated successfully');
+                executeBtn.disabled = false;
+            }, 1500);
+        }
+
+        function executeQuery() {
+            const query = queryEditor.textContent.trim();
+            const selectedDataset = datasetSelect.value;
+            
+            showStatus('executing', 'Executing your query...');
+            
+            // Simulate API execution delay
+            setTimeout(() => {
+                try {
+                    let results = [];
+                    
+                    // Very basic SQL-like query processing for demo purposes
+                    if (query.toLowerCase().includes('where')) {
+                        const whereClause = query.toLowerCase().split('where')[1];
+                        const [field, value] = whereClause.split('=').map(s => s.trim().replace(/['";]/g, ''));
+                        
+                        results = datasets[selectedDataset].sampleData.filter(item => {
+                            return String(item[field]).toLowerCase().includes(value.toLowerCase());
+                        });
+                    } else if (query.toLowerCase().includes('limit')) {
+                        const limit = parseInt(query.toLowerCase().split('limit')[1].trim());
+                        results = datasets[selectedDataset].sampleData.slice(0, limit);
+                    } else {
+                        results = datasets[selectedDataset].sampleData;
+                    }
+                    
+                    if (results.length === 0) {
+                        throw new Error('No records matched your query');
+                    }
+                    
+                    currentResults = results;
+                    displayResults(results);
+                    
+                    // Format JSON output
+                    const jsonOutput = JSON.stringify(results, null, 2);
+                    jsonPreview.textContent = jsonOutput;
+                    
+                    showStatus('success', `Query executed successfully. ${results.length} records returned.`);
+                    resultsSection.classList.remove('hidden');
+                } catch (error) {
+                    showStatus('error', `Query execution failed: ${error.message}`);
+                    resultsSection.classList.add('hidden');
+                }
+            }, 2000);
+        }
+
+        function displayResults(results) {
+            // Clear previous results
+            tableHeaders.innerHTML = '';
+            tableBody.innerHTML = '';
+            
+            if (!results || results.length === 0) return;
+            
+            // Create header row
+            const fields = Object.keys(results[0]);
+            fields.forEach(field => {
+                const th = document.createElement('th');
+                th.textContent = field.replace('_', ' ').toUpperCase();
+                th.className = 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
+                tableHeaders.appendChild(th);
+            });
+            
+            // Create data rows
+            results.forEach(row => {
+                const tr = document.createElement('tr');
+                fields.forEach(field => {
+                    const td = document.createElement('td');
+                    td.textContent = row[field];
+                    td.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                    tr.appendChild(td);
+                });
+                tableBody.appendChild(tr);
+            });
+            
+            resultCount.textContent = `Showing ${results.length} records`;
+        }
+
+        function showStatus(status, message) {
+            queryStatus = status;
+            queryStatusSection.classList.remove('hidden');
+            
+            // Clear all status classes
+            statusIndicator.classList.remove('status-pending', 'status-success', 'status-error');
+            
+            switch (status) {
+                case 'validating':
+                case 'executing':
+                    statusIndicator.classList.add('status-pending');
+                    statusTitle.textContent = 'Processing...';
+                    break;
+                case 'success':
+                    statusIndicator.classList.add('status-success');
+                    statusTitle.textContent = 'Success';
+                    break;
+                case 'error':
+                    statusIndicator.classList.add('status-error');
+                    statusTitle.textContent = 'Error';
+                    break;
+            }
+            
+            statusMessage.textContent = message;
+        }
+
+        function resetInterface() {
+            queryEditor.textContent = 'SELECT * FROM population LIMIT 100;';
+            queryStatusSection.classList.add('hidden');
+            resultsSection.classList.add('hidden');
+            mysqlPreview.classList.add('hidden');
+            executeBtn.disabled = true;
+        }
+
+        function exportToPdf() {
+            if (!currentResults || currentResults.length === 0) {
+                alert('No results to export');
+                return;
+            }
+            
+            const doc = new jsPDF();
+            const title = `Survey Data Query Results (${new Date().toLocaleDateString()})`;
+            
+            // Add title
+            doc.setFontSize(16);
+            doc.text(title, 14, 15);
+            
+            // Prepare data for the table
+            const fields = Object.keys(currentResults[0]);
+            const headers = fields.map(f => f.replace('_', ' ').toUpperCase());
+            const data = currentResults.map(row => fields.map(field => row[field]));
+            
+            // Add table
+            doc.autoTable({
+                head: [headers],
+                body: data,
+                startY: 25,
+                styles: { fontSize: 8 },
+                headStyles: { fillColor: [32, 80, 129] }
+            });
+            
+            // Save the PDF
+            doc.save('survey_query_results.pdf');
+        }
+    </script>
+</body>
+</html>
